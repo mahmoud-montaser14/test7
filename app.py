@@ -10,7 +10,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # Limit file size to 16MB
 
 # Flask application
-app = Flask(__name__, template_folder='.')
+app = Flask(__name__, template_folder='templates')
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 # Configure structured logging

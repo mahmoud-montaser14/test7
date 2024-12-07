@@ -1,7 +1,7 @@
 import os
 import logging
 import json
-from flask import Flask, request, jsonify
+from flask import Flask, request, render_template, jsonify
 from io import BytesIO
 from utils import preprocess_image, predict_and_format_result
 
@@ -10,7 +10,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # Limit file size to 16MB
 
 # Flask application
-app = Flask(__name__)
+app = Flask(__name__, template_folder='.')
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 # Configure structured logging
@@ -41,6 +41,37 @@ app.logger.addHandler(file_handler)
 def allowed_file(filename):
     """Check if file has a valid extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    """Render the index page and handle form submissions."""
+    result = None
+    image_filename = None
+    error_message = None
+
+    if request.method == 'POST':
+        file = request.files.get('image')
+        if not file:
+            error_message = "No file uploaded. Please upload an image."
+            app.logger.error(error_message)
+            return render_template('index.html', result=None, error=error_message)
+
+        if file and allowed_file(file.filename):
+            try:
+                file_content = BytesIO(file.read())
+                result = predict_and_format_result(file_content)
+                image_filename = file.filename
+                return render_template('index.html', result=result, image=image_filename)
+            except Exception as e:
+                app.logger.error(f"Error during prediction: {e}")
+                error_message = f"Prediction error: {str(e)}"
+                return render_template('index.html', result=None, error=error_message)
+        else:
+            error_message = "Invalid file type. Please upload a valid image."
+            app.logger.error(error_message)
+            return render_template('index.html', result=None, error=error_message)
+
+    return render_template('index.html', result=result, image=image_filename, error=error_message)
 
 @app.route('/api/predict', methods=['POST'])
 def api_predict():
